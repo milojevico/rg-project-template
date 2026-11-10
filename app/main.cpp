@@ -18,6 +18,28 @@ float green = 0.3f;
 float blue = 0.3f;
 const float alpha = 1.0f;
 
+
+const char *vertex_shader_source = R"s(
+#version 330 core
+layout (location = 0) in vec3 aPos;
+
+void main() {
+    gl_Position = vec4(aPos.x,aPos.y,aPos.z,1.0);
+}
+)s";
+const char *fragment_shader_source = R"s(
+#version 330 core
+out vec4 FragColor;
+
+void main() {
+    FragColor = vec4(1.0f,1.0f,1.0f,1.0f);
+}
+)s";
+
+//Napraviti tako da je svaki kvadrant ekrana obojen drugom bojom
+//Napisati funkciju koja crta mnogougao N na sredini ekrana
+//CTRL + N - crta n-tougao na sredini ekrana gde je N broj na tastaturi
+
 int main() {
 
     glfwInit();
@@ -41,15 +63,113 @@ int main() {
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
+
+    unsigned int vertexShader;
+    vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertex_shader_source, nullptr);
+    glCompileShader(vertexShader);
+    int success;
+    char infoLog[512];
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
+        std::cout << "Failed to compile vertex shader\n"
+                  << infoLog << std::endl;
+    }
+
+    unsigned int fragmentShader;
+    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragment_shader_source, nullptr);
+    glCompileShader(fragmentShader);
+
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
+        std::cout << "Failed to compile fragment shader\n"
+                  << infoLog << std::endl;
+    }
+
+    unsigned int shaderProgram;
+    shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, nullptr, infoLog);
+        std::cout << "Failed to link program\n"
+                  << infoLog << std::endl;
+    }
+
+    float vertices[] = {
+            //@formater:off
+            -0.5f, -0.5f, 0.0f,
+            0.5f, -0.5f, 0.0f,
+            0.0f, 0.5f, 0.0f,
+            -0.8f, -0.8f, 0.0f,
+            -0.8f, -0.7f, 0.0f,
+            -0.7f, -0.8f, 0.0f,
+            -0.7f, -0.7f, 0.0f,
+            -1.0f, -1.0f, 0.0f,
+            -1.0f, 0.0f, 0.0f,
+            0.0f, -1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f,
+            -1.0f, 1.0f, 0.0f,
+            0.0f, 1.0f, 0.0f,
+            1.0f, 1.0f, 0.0f,
+            1.0f, 0.0f, 0.0f,
+            1.0f, -1.0f, 0.0f
+            //@ formater:on
+    };
+
+    unsigned int indices[] = {
+            0, 1, 2,
+            3, 4, 5,
+            4, 5, 6,
+            7, 8, 9,
+            8, 9, 10,
+            8, 11, 12,
+            8, 12, 10};
+
+    unsigned int VBO;
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    unsigned int VAO;
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+
+    unsigned int EBO;
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *) 0);
+    glEnableVertexAttribArray(0);
+
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
 
         glClearColor(red, green, blue, alpha);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        glUseProgram(shaderProgram);
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
+
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteProgram(shaderProgram);
+
     glfwTerminate();
     return 0;
 }
