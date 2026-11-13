@@ -2,14 +2,17 @@
 
 #include <glad/glad.h>
 #include <iostream>
+#include <math.h>
 #include <ostream>
 
 // @formatter:on
 #include <GLFW/glfw3.h>
+#include <vector>
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
 void cursor_position_callback(GLFWwindow *window, double xpos, double ypos);
+void draw_polygon(int n);
 
 unsigned int SCR_WIDTH = 800;
 unsigned int SCR_HEIGHT = 600;
@@ -17,28 +20,31 @@ float red = 0.2f;
 float green = 0.3f;
 float blue = 0.3f;
 const float alpha = 1.0f;
-
+unsigned int VAO2, VBO2, EBO2;
+unsigned int polygonIndex = 0;
+int polygonN = 0;
 
 const char *vertex_shader_source = R"s(
 #version 330 core
 layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec4 aColor;
+out vec4 outColor;
 
 void main() {
     gl_Position = vec4(aPos.x,aPos.y,aPos.z,1.0);
+    outColor = aColor;
 }
 )s";
 const char *fragment_shader_source = R"s(
 #version 330 core
 out vec4 FragColor;
+in vec4 outColor;
 
 void main() {
-    FragColor = vec4(1.0f,1.0f,1.0f,1.0f);
+    FragColor = vec4(outColor);
 }
 )s";
 
-//Napraviti tako da je svaki kvadrant ekrana obojen drugom bojom
-//Napisati funkciju koja crta mnogougao N na sredini ekrana
-//CTRL + N - crta n-tougao na sredini ekrana gde je N broj na tastaturi
 
 int main() {
 
@@ -104,50 +110,73 @@ int main() {
 
     float vertices[] = {
             //@formater:off
-            -0.5f, -0.5f, 0.0f,
-            0.5f, -0.5f, 0.0f,
-            0.0f, 0.5f, 0.0f,
-            -0.8f, -0.8f, 0.0f,
-            -0.8f, -0.7f, 0.0f,
-            -0.7f, -0.8f, 0.0f,
-            -0.7f, -0.7f, 0.0f,
-            -1.0f, -1.0f, 0.0f,
-            -1.0f, 0.0f, 0.0f,
-            0.0f, -1.0f, 0.0f,
-            0.0f, 0.0f, 0.0f,
-            -1.0f, 1.0f, 0.0f,
-            0.0f, 1.0f, 0.0f,
-            1.0f, 1.0f, 0.0f,
-            1.0f, 0.0f, 0.0f,
-            1.0f, -1.0f, 0.0f
+            -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.5f,
+            0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.5f,
+            0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.5f,
+            -0.8f, -0.8f, 0.0f, 1.0f, 1.0f, 1.0f, 0.1f,
+            -0.8f, -0.7f, 0.0f, 1.0f, 1.0f, 1.0f, 0.1f,
+            -0.7f, -0.8f, 0.0f, 1.0f, 1.0f, 1.0f, 0.1f,
+            -0.7f, -0.7f, 0.0f, 1.0f, 1.0f, 1.0f, 0.1f,
+            -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.2f,
+            -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.2f,
+            0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.2f,
+            0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.2f,
+            -1.0f, 0.0f, 0.0f, 0.5f, 0.5f, 0.0f, 0.2f,
+            -1.0f, 1.0f, 0.0f, 0.5f, 0.5f, 0.0f, 0.2f,
+            0.0f, 1.0f, 0.0f, 0.5f, 0.5f, 0.0f, 0.2f,
+            0.0f, 0.0f, 0.0f, 0.5f, 0.5f, 0.0f, 0.2f,
+            1.0f, 1.0f, 0.0f, 0.2f, 0.7f, 0.8f, 0.2f,
+            1.0f, 0.0f, 0.0f, 0.2f, 0.7f, 0.8f, 0.2f,
+            0.0f, 1.0f, 0.0f, 0.2f, 0.7f, 0.8f, 0.2f,
+            0.0f, 0.0f, 0.0f, 0.2f, 0.7f, 0.8f, 0.2f
             //@ formater:on
     };
 
     unsigned int indices[] = {
-            0, 1, 2,
-            3, 4, 5,
-            4, 5, 6,
             7, 8, 9,
             8, 9, 10,
-            8, 11, 12,
-            8, 12, 10};
+            11, 12, 13,
+            11, 13, 14,
+            15, 16, 17,
+            16, 17, 18,
+            0, 1, 2,
+            3, 4, 5,
+            4, 5, 6};
 
     unsigned int VBO;
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
+    glGenBuffers(1, &VBO2);
+
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
+
+    glGenVertexArrays(1, &VAO2);
 
     unsigned int EBO;
     glGenBuffers(1, &EBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *) 0);
+    glGenBuffers(1, &EBO2);
+
+    glBindVertexArray(VAO2);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO2);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *) 0);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *) (3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glBindVertexArray(0);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *) 0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *) (3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
@@ -157,8 +186,17 @@ int main() {
 
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, 27, GL_UNSIGNED_INT, 0);
 
+        if (polygonN != 0) {
+            draw_polygon(polygonN);
+        }
+
+        if (polygonN != 0) {
+            glBindVertexArray(VAO2);
+            glDrawElements(GL_TRIANGLES, polygonIndex,
+                           GL_UNSIGNED_INT, 0);
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -169,6 +207,10 @@ int main() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram);
+    glDeleteVertexArrays(1, &VAO2);
+    glDeleteBuffers(1, &VBO2);
+    glDeleteBuffers(1, &EBO2);
+    glDeleteBuffers(1, &EBO);
 
     glfwTerminate();
     return 0;
@@ -190,6 +232,11 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
+    }
+    for (int i = 3; i <= 9; i++) {
+        if (glfwGetKey(window, GLFW_KEY_0 + i) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+            polygonN = i;
+        }
     }
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
         red = rand() / (float) RAND_MAX;
@@ -230,4 +277,56 @@ void processInput(GLFWwindow *window) {
         SCR_WIDTH -= 1;
         glfwSetWindowSize(window, SCR_WIDTH, SCR_HEIGHT);
     }
+}
+
+void draw_polygon(int n) {
+    std::vector<float> vertices(7 * (n + 1));
+    std::vector<unsigned int> indices(3 * n);
+    for (int i = 0; i < n; i++) {
+        indices[3 * i + 1] = i + 1;
+        indices[3 * i + 2] = i + 2;
+        indices[3 * i] = 0;
+        if (i + 2 == n + 1) {
+            indices[3 * i + 2] = 1;
+        }
+    }
+    float r = 0.5f;
+    float phi = 2.0 * M_PI / n;
+    float x, y;
+    vertices[0] = 0.0f;
+    vertices[1] = 0.0f;
+    vertices[2] = 0.0f;
+    vertices[3] = 1.0f;
+    vertices[4] = 0.0f;
+    vertices[5] = 0.0f;
+    vertices[6] = 1.0f;
+    for (int i = 1; i <= n; i++) {
+        x = r * sin(phi * (i - 1));
+        y = r * cos(phi * (i - 1));
+        vertices[7 * i] = x;
+        vertices[7 * i + 1] = y;
+        vertices[7 * i + 2] = 0.0f;
+        vertices[7 * i + 3] = 1.0f;
+        vertices[7 * i + 4] = 0.0f;
+        vertices[7 * i + 5] = 0.0f;
+        vertices[7 * i + 6] = 1.0f;
+    }
+
+    glBindVertexArray(VAO2);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO2);
+    glBufferData(GL_ARRAY_BUFFER,
+                 vertices.size() * sizeof(float),
+                 vertices.data(),
+                 GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO2);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 indices.size() * sizeof(unsigned int),
+                 indices.data(),
+                 GL_DYNAMIC_DRAW);
+
+    polygonIndex = indices.size();
+
+    glBindVertexArray(0);
 }
