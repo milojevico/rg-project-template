@@ -144,39 +144,42 @@ int main() {
             4, 5, 6};
 
     unsigned int VBO;
+    unsigned int VAO;
+    unsigned int EBO;
+
+    glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    glGenBuffers(1, &VBO2);
-
-    unsigned int VAO;
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-
-    glGenVertexArrays(1, &VAO2);
-
-    unsigned int EBO;
-    glGenBuffers(1, &EBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glGenBuffers(1, &EBO2);
-
-    glBindVertexArray(VAO2);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO2);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *) 0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *) (3 * sizeof(float)));
     glEnableVertexAttribArray(1);
     glBindVertexArray(0);
 
+    glGenVertexArrays(1, &VAO2);
+    glGenBuffers(1, &VBO2);
+    glGenBuffers(1, &EBO2);
+
+    glBindVertexArray(VAO2);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO2);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO2);
+
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *) 0);
     glEnableVertexAttribArray(0);
-
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *) (3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
 
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
@@ -297,8 +300,8 @@ void draw_polygon(int n) {
     vertices[1] = 0.0f;
     vertices[2] = 0.0f;
     vertices[3] = 1.0f;
-    vertices[4] = 0.0f;
-    vertices[5] = 0.0f;
+    vertices[4] = 1.0f;
+    vertices[5] = 1.0f;
     vertices[6] = 1.0f;
     for (int i = 1; i <= n; i++) {
         x = r * sin(phi * (i - 1));
@@ -307,8 +310,8 @@ void draw_polygon(int n) {
         vertices[7 * i + 1] = y;
         vertices[7 * i + 2] = 0.0f;
         vertices[7 * i + 3] = 1.0f;
-        vertices[7 * i + 4] = 0.0f;
-        vertices[7 * i + 5] = 0.0f;
+        vertices[7 * i + 4] = 1.0f;
+        vertices[7 * i + 5] = 1.0f;
         vertices[7 * i + 6] = 1.0f;
     }
 
